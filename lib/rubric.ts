@@ -37,6 +37,18 @@ export interface CriterionResult extends CriterionInput {
   scaleHigh: string;
 }
 
+export interface TierWeights {
+  tier1: number;
+  tier2: number;
+  tier3: number;
+}
+
+export const DEFAULT_TIER_WEIGHTS: TierWeights = {
+  tier1: 3,
+  tier2: 2,
+  tier3: 1,
+};
+
 export interface EvaluationResult {
   partner: EvaluationInput;
   criteria: CriterionResult[];
@@ -50,6 +62,7 @@ export interface EvaluationResult {
   keyUpsides: string[];
   summaryNarrative: string;
   confidenceBreakdown: { high: number; medium: number; low: number; total: number };
+  tierWeights: TierWeights;
 }
 
 export const CRITERIA_DEFINITIONS = {
@@ -192,24 +205,29 @@ export const CRITERIA_DEFINITIONS = {
 
 export type CriterionKey = keyof typeof CRITERIA_DEFINITIONS;
 
-const MAX_WEIGHTED_SCORE = 85; // 3*(5+5+5) + 2*(5+5) + 1*(5+5+5+5) = 45+20+20 = 85
-
-export function computeEvaluation(input: EvaluationInput): EvaluationResult {
+export function computeEvaluation(input: EvaluationInput, weights: TierWeights = DEFAULT_TIER_WEIGHTS): EvaluationResult {
   const criteriaKeys = Object.keys(CRITERIA_DEFINITIONS) as CriterionKey[];
+
+  // Compute max weighted score based on custom weights
+  const tier1Count = criteriaKeys.filter((k) => CRITERIA_DEFINITIONS[k].tier === 1).length;
+  const tier2Count = criteriaKeys.filter((k) => CRITERIA_DEFINITIONS[k].tier === 2).length;
+  const tier3Count = criteriaKeys.filter((k) => CRITERIA_DEFINITIONS[k].tier === 3).length;
+  const MAX_WEIGHTED_SCORE = tier1Count * 5 * weights.tier1 + tier2Count * 5 * weights.tier2 + tier3Count * 5 * weights.tier3;
 
   const criteria: CriterionResult[] = criteriaKeys.map((key) => {
     const def = CRITERIA_DEFINITIONS[key];
     const inp = input[key] as CriterionInput;
+    const tierWeight = def.tier === 1 ? weights.tier1 : def.tier === 2 ? weights.tier2 : weights.tier3;
     return {
       key,
       label: def.label,
       tier: def.tier,
-      weight: def.weight,
+      weight: tierWeight,
       score: inp.score,
       confidence: inp.confidence,
       validationNeeded: inp.validationNeeded,
       notes: inp.notes,
-      weightedScore: inp.score * def.weight,
+      weightedScore: inp.score * tierWeight,
       description: def.description,
       scaleLow: def.scaleLow,
       scaleHigh: def.scaleHigh,
@@ -223,10 +241,14 @@ export function computeEvaluation(input: EvaluationInput): EvaluationResult {
   const tier1Average = tier1Criteria.reduce((s, c) => s + c.score, 0) / tier1Criteria.length;
   const autoRedFlag = tier1Criteria.some((c) => c.score === 1);
 
+  // Thresholds scale with max: ~59% = conditional floor, ~76% = greenlight floor
+  const greenlightThreshold = Math.round(MAX_WEIGHTED_SCORE * 0.765);
+  const conditionalThreshold = Math.round(MAX_WEIGHTED_SCORE * 0.588);
+
   let decision: EvaluationResult["decision"];
-  if (autoRedFlag || tier1Criteria.some((c) => c.score <= 1) || totalWeightedScore < 50) {
+  if (autoRedFlag || tier1Criteria.some((c) => c.score <= 1) || totalWeightedScore < conditionalThreshold) {
     decision = "Pass";
-  } else if (totalWeightedScore >= 65 && !autoRedFlag && tier1Average >= 4 && tier1Criteria.every((c) => c.score >= 3)) {
+  } else if (totalWeightedScore >= greenlightThreshold && !autoRedFlag && tier1Average >= 4 && tier1Criteria.every((c) => c.score >= 3)) {
     decision = "Greenlight";
   } else {
     decision = "Conditional";
@@ -255,7 +277,7 @@ export function computeEvaluation(input: EvaluationInput): EvaluationResult {
     total: criteria.length,
   };
 
-  const summaryNarrative = buildNarrative(input, criteria, totalWeightedScore, decision, tier1Average, lowConfidenceCriteria, autoRedFlag);
+  const summaryNarrative = buildNarrative(input, criteria, totalWeightedScore, MAX_WEIGHTED_SCORE, decision, tier1Average, lowConfidenceCriteria, autoRedFlag);
 
   return {
     partner: input,
@@ -270,6 +292,7 @@ export function computeEvaluation(input: EvaluationInput): EvaluationResult {
     keyUpsides,
     summaryNarrative,
     confidenceBreakdown,
+    tierWeights: weights,
   };
 }
 
@@ -277,6 +300,7 @@ function buildNarrative(
   input: EvaluationInput,
   criteria: CriterionResult[],
   totalScore: number,
+  maxScore: number,
   decision: EvaluationResult["decision"],
   tier1Avg: number,
   lowConf: CriterionResult[],
@@ -289,7 +313,7 @@ function buildNarrative(
   const weakTier1 = tier1Names.filter((c) => c.score <= 2);
   const strongTier1 = tier1Names.filter((c) => c.score >= 4);
 
-  let narrative = `${partnerName} scores ${totalScore}/85 and is rated ${decisionLabel}. `;
+  let narrative = `${partnerName} scores ${totalScore}/${maxScore} and is rated ${decisionLabel}. `;
 
   if (autoRed) {
     const blocked = tier1Names.filter((c) => c.score === 1).map((c) => c.label).join(" and ");

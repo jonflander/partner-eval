@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { EvaluationResult, CriterionResult } from "@/lib/rubric";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScoreRadarChart } from "@/components/score-radar-chart";
 import { TierBreakdown } from "@/components/tier-breakdown";
+import { Spinner } from "@/components/ui/spinner";
 
 interface Props {
   result: EvaluationResult;
@@ -47,6 +49,8 @@ function ScoreMeter({ score, max }: { score: number; max: number }) {
       : pct >= 59
       ? "var(--yellow)"
       : "var(--red)";
+  const condThreshold = Math.round(max * 0.588);
+  const greenThreshold = Math.round(max * 0.765);
 
   return (
     <div className="space-y-2">
@@ -64,8 +68,8 @@ function ScoreMeter({ score, max }: { score: number; max: number }) {
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>0 — Pass</span>
-        <span>50 — Conditional</span>
-        <span>65+ — Greenlight</span>
+        <span>{condThreshold} — Conditional</span>
+        <span>{greenThreshold}+ — Greenlight</span>
       </div>
     </div>
   );
@@ -163,10 +167,23 @@ function CriterionRow({ criterion }: { criterion: CriterionResult }) {
 }
 
 export function ScoreReport({ result, onReset }: Props) {
+  const [exporting, setExporting] = useState(false);
   const cfg = DECISION_CONFIG[result.decision];
   const tier1 = result.criteria.filter((c) => c.tier === 1);
   const tier2 = result.criteria.filter((c) => c.tier === 2);
   const tier3 = result.criteria.filter((c) => c.tier === 3);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const { exportToPptx } = await import("@/lib/export-pptx");
+      await exportToPptx(result);
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -182,13 +199,30 @@ export function ScoreReport({ result, onReset }: Props) {
               .join(" · ")}
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={onReset}
-          className="border-border text-foreground hover:bg-secondary shrink-0"
-        >
-          New Evaluation
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={exporting}
+            className="border-border text-foreground hover:bg-secondary gap-2"
+          >
+            {exporting ? (
+              <>
+                <Spinner className="w-3.5 h-3.5" />
+                Exporting...
+              </>
+            ) : (
+              "Export to PowerPoint"
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onReset}
+            className="border-border text-foreground hover:bg-secondary"
+          >
+            New Evaluation
+          </Button>
+        </div>
       </div>
 
       {/* Decision + Score Hero */}
@@ -283,9 +317,9 @@ export function ScoreReport({ result, onReset }: Props) {
         </h2>
 
         {[
-          { label: "Tier 1 — Execution & Monetization Foundation", criteria: tier1, color: "text-[var(--red)]", weight: "3x" },
-          { label: "Tier 2 — Value Creation & Network Building", criteria: tier2, color: "text-[var(--yellow)]", weight: "2x" },
-          { label: "Tier 3 — Operational Feasibility", criteria: tier3, color: "text-primary", weight: "1x" },
+          { label: "Tier 1 — Execution & Monetization Foundation", criteria: tier1, color: "text-[var(--red)]", weight: `${result.tierWeights.tier1}×` },
+          { label: "Tier 2 — Value Creation & Network Building", criteria: tier2, color: "text-[var(--yellow)]", weight: `${result.tierWeights.tier2}×` },
+          { label: "Tier 3 — Operational Feasibility", criteria: tier3, color: "text-primary", weight: `${result.tierWeights.tier3}×` },
         ].map(({ label, criteria, color, weight }) => {
           const tierTotal = criteria.reduce((s, c) => s + c.weightedScore, 0);
           return (

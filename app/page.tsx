@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { EvaluationForm } from "@/components/evaluation-form";
 import { ScoreReport } from "@/components/score-report";
-import { computeEvaluation, EvaluationInput, EvaluationResult } from "@/lib/rubric";
+import { computeEvaluation, EvaluationInput, EvaluationResult, TierWeights } from "@/lib/rubric";
 
 export default function Home() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
 
-  const handleSubmit = (input: EvaluationInput) => {
-    const evaluated = computeEvaluation(input);
+  const handleSubmit = (input: EvaluationInput, weights: TierWeights) => {
+    const evaluated = computeEvaluation(input, weights);
     setResult(evaluated);
     // Scroll to top on report
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -75,9 +75,9 @@ export default function Home() {
             {/* Score ranges reference */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { range: "65–85", label: "Greenlight", sub: "Priority — actively pursue", color: "var(--green)" },
-                { range: "50–64", label: "Conditional", sub: "Viable with specific conditions", color: "var(--yellow)" },
-                { range: "< 50", label: "Pass", sub: "Deprioritize", color: "var(--red)" },
+                { range: "top 24%", label: "Greenlight", sub: "Priority — actively pursue", color: "var(--green)" },
+                { range: "59–76%", label: "Conditional", sub: "Viable with specific conditions", color: "var(--yellow)" },
+                { range: "below 59%", label: "Pass", sub: "Deprioritize", color: "var(--red)" },
               ].map((item) => (
                 <div
                   key={item.label}
@@ -87,7 +87,7 @@ export default function Home() {
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                     <span className="font-bold text-sm text-foreground">{item.label}</span>
                   </div>
-                  <p className="text-xs font-mono font-semibold" style={{ color: item.color }}>{item.range}</p>
+                  <p className="text-xs font-mono font-semibold" style={{ color: item.color }}>{item.range} of max</p>
                   <p className="text-xs text-muted-foreground leading-snug">{item.sub}</p>
                 </div>
               ))}
@@ -103,7 +103,7 @@ export default function Home() {
       <footer className="border-t border-border mt-16">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <p className="text-xs text-muted-foreground text-center">
-            SEVN Partner Evaluation Framework · Max score 85 · Tier 1 score of 1 triggers automatic Pass
+            SEVN Partner Evaluation Framework · 9 criteria across 3 tiers · Tier 1 score of 1 triggers automatic Pass
           </p>
         </div>
       </footer>
