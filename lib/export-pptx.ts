@@ -146,7 +146,7 @@ export async function exportToPptx(result: EvaluationResult) {
     };
     slide.addShape(pptx.ShapeType.rect, {
       x: 0.3, y: 2.6, w: 4.5, h: 0.55,
-      fill: { color: decColor + "22" },
+      fill: { color: COLORS.bgCardAlt },
       line: { color: decColor, width: 1 },
       rectRadius: 0.08,
     });
@@ -158,7 +158,7 @@ export async function exportToPptx(result: EvaluationResult) {
     if (result.autoRedFlag) {
       slide.addShape(pptx.ShapeType.rect, {
         x: 5.1, y: 2.6, w: 3.2, h: 0.55,
-        fill: { color: COLORS.red + "22" },
+        fill: { color: COLORS.bgCardAlt },
         line: { color: COLORS.red, width: 1 },
         rectRadius: 0.08,
       });
@@ -266,8 +266,8 @@ export async function exportToPptx(result: EvaluationResult) {
     // Risk header
     slide.addShape(pptx.ShapeType.rect, {
       x: riskX, y: tableY, w: colW, h: 0.35,
-      fill: { color: COLORS.red + "22" },
-      line: { color: COLORS.red + "44", width: 0.5 },
+      fill: { color: COLORS.bgCardAlt },
+      line: { color: COLORS.red, width: 0.5 },
       rectRadius: 0.06,
     });
     slide.addText("KEY RISKS", {
@@ -292,8 +292,8 @@ export async function exportToPptx(result: EvaluationResult) {
     // Upside header
     slide.addShape(pptx.ShapeType.rect, {
       x: upsideX, y: tableY, w: colW, h: 0.35,
-      fill: { color: COLORS.green + "22" },
-      line: { color: COLORS.green + "44", width: 0.5 },
+      fill: { color: COLORS.bgCardAlt },
+      line: { color: COLORS.green, width: 0.5 },
       rectRadius: 0.06,
     });
     slide.addText("KEY UPSIDE", {
@@ -340,7 +340,7 @@ export async function exportToPptx(result: EvaluationResult) {
       slide.addShape(pptx.ShapeType.rect, {
         x: 0.3, y: curY, w: W - 0.6, h: 0.3,
         fill: { color: COLORS.bgCardAlt },
-        line: { color: color + "55", width: 0.5 },
+        line: { color: color, width: 0.5 },
         rectRadius: 0.05,
       });
       slide.addText(label, {
@@ -408,7 +408,7 @@ export async function exportToPptx(result: EvaluationResult) {
     }
   }
 
-  // ═══════════════════════════════════════════════════════
+  // ═════════════════════════════════���═════════════════════
   // SLIDE 4 — Criterion Deep Dive (notes & validation)
   // ═══════════════════════════════════════════════════════
   {

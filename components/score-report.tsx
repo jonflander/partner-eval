@@ -80,7 +80,7 @@ function ConfidenceBar({ breakdown }: { breakdown: EvaluationResult["confidenceB
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Confidence Distribution
+        Confidence Distribution <span className="normal-case font-normal text-muted-foreground/70">(affects effective score: High=100%, Med=90%, Low=75%)</span>
       </p>
       <div className="flex h-2.5 w-full rounded-full overflow-hidden">
         {high > 0 && (
@@ -120,8 +120,12 @@ function ConfidenceBar({ breakdown }: { breakdown: EvaluationResult["confidenceB
   );
 }
 
+const CONF_LABEL: Record<string, string> = { H: "High", M: "Med", L: "Low", "": "—" };
+const CONF_PCT: Record<string, string> = { H: "100%", M: "90%", L: "75%", "": "90%" };
+
 function CriterionRow({ criterion }: { criterion: CriterionResult }) {
   const score = criterion.score;
+  const isAdjusted = criterion.confidenceMultiplier < 1.0;
   const dotColor =
     score >= 4 ? "bg-[var(--green)]" : score === 3 ? "bg-[var(--yellow)]" : "bg-[var(--red)]";
 
@@ -140,24 +144,37 @@ function CriterionRow({ criterion }: { criterion: CriterionResult }) {
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <span className="font-medium text-sm text-foreground">{criterion.label}</span>
-          <div className="flex items-center gap-2 shrink-0">
-            {criterion.confidence && (
-              <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", confColor)}>
-                {criterion.confidence === "H" ? "High" : criterion.confidence === "M" ? "Med" : "Low"} conf.
-              </span>
-            )}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+            {/* Confidence badge */}
+            <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", confColor)}>
+              {CONF_LABEL[criterion.confidence ?? ""]} conf. ({CONF_PCT[criterion.confidence ?? ""]})
+            </span>
+            {/* Score math */}
             <span className="text-xs text-muted-foreground font-mono">
-              {score}/5 × {criterion.weight} = <span className="text-foreground font-bold">{criterion.weightedScore}</span>
+              {score}/5 × {criterion.weight}
+              {isAdjusted && (
+                <span className="text-muted-foreground"> × {CONF_PCT[criterion.confidence ?? ""]}</span>
+              )}
+              {" = "}
+              {isAdjusted ? (
+                <>
+                  <span className="line-through text-muted-foreground/50 mr-1">{criterion.rawWeightedScore}</span>
+                  <span className="text-foreground font-bold">{criterion.weightedScore}</span>
+                </>
+              ) : (
+                <span className="text-foreground font-bold">{criterion.weightedScore}</span>
+              )}
             </span>
           </div>
         </div>
         {criterion.validationNeeded && (
-          <p className="text-xs text-muted-foreground mt-1 italic">
-            Validation needed: {criterion.validationNeeded}
+          <p className="text-xs text-[var(--yellow)] mt-1 flex gap-1">
+            <span className="font-semibold shrink-0">Validation needed:</span>
+            <span>{criterion.validationNeeded}</span>
           </p>
         )}
         {criterion.notes && (
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
             {criterion.notes}
           </p>
         )}
@@ -172,6 +189,7 @@ export function ScoreReport({ result, onReset }: Props) {
   const tier1 = result.criteria.filter((c) => c.tier === 1);
   const tier2 = result.criteria.filter((c) => c.tier === 2);
   const tier3 = result.criteria.filter((c) => c.tier === 3);
+  const tierWeights = result.tierWeights ?? { tier1: 3, tier2: 2, tier3: 1 };
 
   const handleExport = async () => {
     setExporting(true);
@@ -312,14 +330,26 @@ export function ScoreReport({ result, onReset }: Props) {
 
       {/* Detailed Scorecard */}
       <div className="rounded-xl border border-border bg-card p-6 space-y-6">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
-          Full Scorecard
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+            Full Scorecard
+          </h2>
+          {/* Confidence adjustment legend */}
+          <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground space-y-1 sm:text-right">
+            <p className="font-semibold text-foreground text-xs">Confidence adjusts effective score</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 sm:justify-end">
+              <span><span className="text-[var(--green)] font-bold">High</span> = 100% of score</span>
+              <span><span className="text-[var(--yellow)] font-bold">Medium</span> = 90% of score</span>
+              <span><span className="text-[var(--red)] font-bold">Low</span> = 75% of score</span>
+            </div>
+            <p className="text-muted-foreground/70 text-xs">Strikethrough = raw; bold = effective used in total</p>
+          </div>
+        </div>
 
         {[
-          { label: "Tier 1 — Execution & Monetization Foundation", criteria: tier1, color: "text-[var(--red)]", weight: `${result.tierWeights.tier1}×` },
-          { label: "Tier 2 — Value Creation & Network Building", criteria: tier2, color: "text-[var(--yellow)]", weight: `${result.tierWeights.tier2}×` },
-          { label: "Tier 3 — Operational Feasibility", criteria: tier3, color: "text-primary", weight: `${result.tierWeights.tier3}×` },
+          { label: "Tier 1 — Execution & Monetization Foundation", criteria: tier1, color: "text-[var(--red)]", weight: `${tierWeights.tier1}×` },
+          { label: "Tier 2 — Value Creation & Network Building", criteria: tier2, color: "text-[var(--yellow)]", weight: `${tierWeights.tier2}×` },
+          { label: "Tier 3 — Operational Feasibility", criteria: tier3, color: "text-primary", weight: `${tierWeights.tier3}×` },
         ].map(({ label, criteria, color, weight }) => {
           const tierTotal = criteria.reduce((s, c) => s + c.weightedScore, 0);
           return (

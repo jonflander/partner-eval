@@ -26,12 +26,22 @@ export interface EvaluationInput {
   operationalComplexity: CriterionInput;
 }
 
+// Confidence multipliers: High = full credit, Medium = 90%, Low = 75%, unset = 90%
+export const CONFIDENCE_MULTIPLIERS: Record<string, number> = {
+  H: 1.0,
+  M: 0.9,
+  L: 0.75,
+  "": 0.9,
+};
+
 export interface CriterionResult extends CriterionInput {
   key: string;
   label: string;
   tier: 1 | 2 | 3;
   weight: number;
-  weightedScore: number;
+  rawWeightedScore: number;      // score × weight (before confidence adjustment)
+  confidenceMultiplier: number;  // 0.75 | 0.9 | 1.0
+  weightedScore: number;         // effective: score × weight × confidenceMultiplier (rounded 1dp)
   description: string;
   scaleLow: string;
   scaleHigh: string;
@@ -218,6 +228,9 @@ export function computeEvaluation(input: EvaluationInput, weights: TierWeights =
     const def = CRITERIA_DEFINITIONS[key];
     const inp = input[key] as CriterionInput;
     const tierWeight = def.tier === 1 ? weights.tier1 : def.tier === 2 ? weights.tier2 : weights.tier3;
+    const multiplier = CONFIDENCE_MULTIPLIERS[inp.confidence ?? ""] ?? 0.9;
+    const raw = inp.score * tierWeight;
+    const effective = Math.round(raw * multiplier * 10) / 10;
     return {
       key,
       label: def.label,
@@ -227,7 +240,9 @@ export function computeEvaluation(input: EvaluationInput, weights: TierWeights =
       confidence: inp.confidence,
       validationNeeded: inp.validationNeeded,
       notes: inp.notes,
-      weightedScore: inp.score * tierWeight,
+      rawWeightedScore: raw,
+      confidenceMultiplier: multiplier,
+      weightedScore: effective,
       description: def.description,
       scaleLow: def.scaleLow,
       scaleHigh: def.scaleHigh,
@@ -238,7 +253,8 @@ export function computeEvaluation(input: EvaluationInput, weights: TierWeights =
   const normalizedScore = Math.round((totalWeightedScore / MAX_WEIGHTED_SCORE) * 100);
 
   const tier1Criteria = criteria.filter((c) => c.tier === 1);
-  const tier1Average = tier1Criteria.reduce((s, c) => s + c.score, 0) / tier1Criteria.length;
+  // tier1Average uses effective (confidence-adjusted) score for decision-making
+  const tier1Average = tier1Criteria.reduce((s, c) => s + c.score * c.confidenceMultiplier, 0) / tier1Criteria.length;
   const autoRedFlag = tier1Criteria.some((c) => c.score === 1);
 
   // Thresholds scale with max: ~59% = conditional floor, ~76% = greenlight floor
