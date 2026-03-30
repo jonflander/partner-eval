@@ -1,3 +1,4 @@
+// Export uses jszip (browser-safe, zero Node.js deps) to build raw OOXML
 import type { EvaluationResult, CriterionResult } from "@/lib/rubric";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

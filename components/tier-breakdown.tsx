@@ -89,17 +89,20 @@ export function TierBreakdown({ criteria }: Props) {
               ))}
             </div>
 
-            {/* Tier aggregate bar */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${tierPct}%`, backgroundColor: cfg.color }}
-                />
+            {/* Tier aggregate bar — % of max weighted points earned for this tier */}
+            <div className="pt-1 border-t border-border space-y-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Tier score vs. max possible</span>
+                <span className="font-bold" style={{ color: cfg.color }}>{tierPct}%</span>
               </div>
-              <span className="text-xs font-bold" style={{ color: cfg.color }}>
-                {tierPct}%
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${tierPct}%`, backgroundColor: cfg.color }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );

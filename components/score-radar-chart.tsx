@@ -5,6 +5,7 @@ import {
   Radar,
   PolarGrid,
   PolarAngleAxis,
+  PolarRadiusAxis,
   ResponsiveContainer,
   Tooltip,
   Legend,
@@ -70,6 +71,7 @@ export function ScoreRadarChart({ criteria }: Props) {
       <ResponsiveContainer width="100%" height={280}>
         <RadarChart data={data} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
           <PolarGrid stroke="oklch(0.25 0.015 250)" />
+          <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} />
           <PolarAngleAxis
             dataKey="label"
             tick={{ fill: "oklch(0.6 0.02 250)", fontSize: 11, fontWeight: 500 }}
