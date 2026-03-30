@@ -42,6 +42,7 @@ export interface CriterionResult extends CriterionInput {
   rawWeightedScore: number;      // score × weight (before confidence adjustment)
   confidenceMultiplier: number;  // 0.75 | 0.9 | 1.0
   weightedScore: number;         // effective: score × weight × confidenceMultiplier (rounded 1dp)
+  effectiveScore5: number;       // score × confidenceMultiplier on a 1–5 scale (for radar)
   description: string;
   scaleLow: string;
   scaleHigh: string;
@@ -230,13 +231,17 @@ export function computeEvaluation(input: EvaluationInput, weights: TierWeights =
     const tierWeight = def.tier === 1 ? weights.tier1 : def.tier === 2 ? weights.tier2 : weights.tier3;
     const multiplier = CONFIDENCE_MULTIPLIERS[inp.confidence ?? ""] ?? 0.9;
     const raw = inp.score * tierWeight;
+    // Round to 1 decimal place to avoid floating-point drift
     const effective = Math.round(raw * multiplier * 10) / 10;
+    // Effective score expressed back on a 1–5 scale (for radar chart comparison)
+    const effectiveScore5 = Math.round(inp.score * multiplier * 10) / 10;
     return {
       key,
       label: def.label,
       tier: def.tier,
       weight: tierWeight,
       score: inp.score,
+      effectiveScore5,
       confidence: inp.confidence,
       validationNeeded: inp.validationNeeded,
       notes: inp.notes,
@@ -249,7 +254,7 @@ export function computeEvaluation(input: EvaluationInput, weights: TierWeights =
     };
   });
 
-  const totalWeightedScore = criteria.reduce((sum, c) => sum + c.weightedScore, 0);
+  const totalWeightedScore = Math.round(criteria.reduce((sum, c) => sum + c.weightedScore, 0) * 10) / 10;
   const normalizedScore = Math.round((totalWeightedScore / MAX_WEIGHTED_SCORE) * 100);
 
   const tier1Criteria = criteria.filter((c) => c.tier === 1);

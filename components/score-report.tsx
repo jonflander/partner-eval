@@ -80,7 +80,8 @@ function ConfidenceBar({ breakdown }: { breakdown: EvaluationResult["confidenceB
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-        Confidence Distribution <span className="normal-case font-normal text-muted-foreground/70">(affects effective score: High=100%, Med=90%, Low=75%)</span>
+        Confidence Distribution
+        <span className="normal-case font-normal text-muted-foreground/60 ml-1">— High = full pts · Med = −10% · Low = −25%</span>
       </p>
       <div className="flex h-2.5 w-full rounded-full overflow-hidden">
         {high > 0 && (
@@ -120,8 +121,8 @@ function ConfidenceBar({ breakdown }: { breakdown: EvaluationResult["confidenceB
   );
 }
 
-const CONF_LABEL: Record<string, string> = { H: "High", M: "Med", L: "Low", "": "—" };
-const CONF_PCT: Record<string, string> = { H: "100%", M: "90%", L: "75%", "": "90%" };
+const CONF_LABEL: Record<string, string> = { H: "High", M: "Med", L: "Low", "": "Unset" };
+const CONF_MULTIPLIER_LABEL: Record<string, string> = { H: "no adjustment", M: "−10%", L: "−25%", "": "−10%" };
 
 function CriterionRow({ criterion }: { criterion: CriterionResult }) {
   const score = criterion.score;
@@ -142,33 +143,41 @@ function CriterionRow({ criterion }: { criterion: CriterionResult }) {
     <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
       <div className={cn("w-2 h-2 rounded-full mt-2 shrink-0", dotColor)} />
       <div className="flex-1 min-w-0">
+        {/* Criterion name + weighted score pill */}
         <div className="flex flex-wrap items-center gap-2 justify-between">
           <span className="font-medium text-sm text-foreground">{criterion.label}</span>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Confidence badge */}
             <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", confColor)}>
-              {CONF_LABEL[criterion.confidence ?? ""]} conf. ({CONF_PCT[criterion.confidence ?? ""]})
+              {CONF_LABEL[criterion.confidence ?? ""]} confidence
             </span>
-            {/* Score math */}
-            <span className="text-xs text-muted-foreground font-mono">
-              {score}/5 × {criterion.weight}
-              {isAdjusted && (
-                <span className="text-muted-foreground"> × {CONF_PCT[criterion.confidence ?? ""]}</span>
-              )}
-              {" = "}
+            {/* Weighted score chip */}
+            <span className="text-xs font-mono bg-secondary rounded px-2 py-0.5 text-foreground font-bold">
               {isAdjusted ? (
                 <>
-                  <span className="line-through text-muted-foreground/50 mr-1">{criterion.rawWeightedScore}</span>
-                  <span className="text-foreground font-bold">{criterion.weightedScore}</span>
+                  <span className="line-through text-muted-foreground/60 font-normal mr-1">{criterion.rawWeightedScore}</span>
+                  {criterion.weightedScore} pts
                 </>
               ) : (
-                <span className="text-foreground font-bold">{criterion.weightedScore}</span>
+                <>{criterion.weightedScore} pts</>
               )}
             </span>
           </div>
         </div>
+        {/* Score breakdown line — always visible, plainly labeled */}
+        <p className="text-xs text-muted-foreground mt-1 font-mono">
+          Score {score}/5 × tier weight {criterion.weight}
+          {isAdjusted ? (
+            <span>
+              {" "}= raw {criterion.rawWeightedScore} pts, then {CONF_MULTIPLIER_LABEL[criterion.confidence ?? ""]} confidence adjustment
+              {" "}= <span className="text-foreground font-semibold">{criterion.weightedScore} pts</span>
+            </span>
+          ) : (
+            <span> = <span className="text-foreground font-semibold">{criterion.weightedScore} pts</span> (full credit, high confidence)</span>
+          )}
+        </p>
         {criterion.validationNeeded && (
-          <p className="text-xs text-[var(--yellow)] mt-1 flex gap-1">
+          <p className="text-xs text-[var(--yellow)] mt-1.5 flex gap-1">
             <span className="font-semibold shrink-0">Validation needed:</span>
             <span>{criterion.validationNeeded}</span>
           </p>
@@ -275,9 +284,10 @@ export function ScoreReport({ result, onReset }: Props) {
       {/* Radar + Tier breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-xl border border-border bg-card p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-1">
             Score Radar
           </h2>
+          <p className="text-xs text-muted-foreground mb-4">Raw vs. confidence-adjusted scores on a 1–5 scale</p>
           <ScoreRadarChart criteria={result.criteria} />
         </div>
 
@@ -336,13 +346,13 @@ export function ScoreReport({ result, onReset }: Props) {
           </h2>
           {/* Confidence adjustment legend */}
           <div className="rounded-lg border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground space-y-1 sm:text-right">
-            <p className="font-semibold text-foreground text-xs">Confidence adjusts effective score</p>
+            <p className="font-semibold text-foreground text-xs">How confidence discounts points</p>
             <div className="flex flex-wrap gap-x-4 gap-y-0.5 sm:justify-end">
-              <span><span className="text-[var(--green)] font-bold">High</span> = 100% of score</span>
-              <span><span className="text-[var(--yellow)] font-bold">Medium</span> = 90% of score</span>
-              <span><span className="text-[var(--red)] font-bold">Low</span> = 75% of score</span>
+              <span><span className="text-[var(--green)] font-bold">High</span> — full points, no discount</span>
+              <span><span className="text-[var(--yellow)] font-bold">Medium</span> — 10% discount applied</span>
+              <span><span className="text-[var(--red)] font-bold">Low</span> — 25% discount applied</span>
             </div>
-            <p className="text-muted-foreground/70 text-xs">Strikethrough = raw; bold = effective used in total</p>
+            <p className="text-muted-foreground/60 text-xs italic">Strikethrough = raw pts before discount</p>
           </div>
         </div>
 
@@ -351,7 +361,7 @@ export function ScoreReport({ result, onReset }: Props) {
           { label: "Tier 2 — Value Creation & Network Building", criteria: tier2, color: "text-[var(--yellow)]", weight: `${tierWeights.tier2}×` },
           { label: "Tier 3 — Operational Feasibility", criteria: tier3, color: "text-primary", weight: `${tierWeights.tier3}×` },
         ].map(({ label, criteria, color, weight }) => {
-          const tierTotal = criteria.reduce((s, c) => s + c.weightedScore, 0);
+          const tierTotal = Math.round(criteria.reduce((s, c) => s + c.weightedScore, 0) * 10) / 10;
           return (
             <div key={label} className="space-y-2">
               <div className="flex items-center justify-between">
