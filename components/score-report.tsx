@@ -203,8 +203,24 @@ export function ScoreReport({ result, onReset }: Props) {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const { exportToPptx } = await import("@/lib/export-pptx");
-      await exportToPptx(result);
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(result),
+      });
+      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const partnerName = (result.partner?.partnerName || "partner")
+        .replace(/[^a-z0-9]/gi, "-")
+        .toLowerCase();
+      a.download = `sevn-eval-${partnerName}.pptx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed:", err);
     } finally {
