@@ -123,42 +123,42 @@ export function SavedEvaluationsPanel({ onLoad, onNew, isLoading }: Props) {
             Saved Evaluations ({evaluations.length})
           </p>
           <div className="max-h-[60vh] overflow-y-auto space-y-1.5">
-            {evaluations.map((eval) => {
-              const c = cfg(eval.decision);
+            {evaluations.map((evaluation) => {
+              const c = cfg(evaluation.decision);
               return (
                 <div
-                  key={eval.id}
+                  key={evaluation.id}
                   className="rounded-lg border border-border bg-card p-3 space-y-2 hover:bg-secondary/50 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-foreground truncate">
-                        {eval.partner_name}
+                        {evaluation.partner_name}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(eval.created_at), "MMM d, yyyy")}
+                        {format(new Date(evaluation.created_at), "MMM d, yyyy")}
                       </p>
                     </div>
                     <Badge className={cn("shrink-0 text-xs font-semibold px-2 py-1", c.bg, c.text)}>
-                      {eval.decision}
+                      {evaluation.decision}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      {eval.total_weighted_score.toFixed(1)} pts ({eval.normalized_score.toFixed(0)}%)
+                      {evaluation.total_weighted_score.toFixed(1)} pts ({evaluation.normalized_score.toFixed(0)}%)
                     </span>
                   </div>
                   <div className="flex gap-1.5 pt-1">
                     <Button
-                      onClick={() => handleLoad(eval.id)}
-                      disabled={loadingId === eval.id || isLoading}
+                      onClick={() => handleLoad(evaluation.id)}
+                      disabled={loadingId === evaluation.id || isLoading}
                       size="sm"
                       className="flex-1 h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
-                      {loadingId === eval.id ? "Loading..." : "Open"}
+                      {loadingId === evaluation.id ? "Loading..." : "Open"}
                     </Button>
                     <Button
-                      onClick={() => handleDelete(eval.id, eval.partner_name)}
+                      onClick={() => handleDelete(evaluation.id, evaluation.partner_name)}
                       disabled={isLoading}
                       size="sm"
                       variant="outline"

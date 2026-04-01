@@ -1,27 +1,29 @@
-import { sql } from "@vercel/postgres";
+import { Pool } from "pg";
 import { NextRequest, NextResponse } from "next/server";
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 // GET /api/evaluations/export/csv — export all evaluations as CSV
 export async function GET(req: NextRequest) {
+  const client = await pool.connect();
   try {
-    const result = await sql`
+    const result = await client.query(`
       SELECT 
         id,
         partner_name,
         decision,
-        total_weighted_score,
-        max_possible_score,
+        total_score,
+        max_score,
         normalized_score,
-        tier1_weight,
-        tier2_weight,
-        tier3_weight,
-        key_risks,
-        key_upsides,
+        tier_weights,
+        result_data,
         created_at,
         updated_at
       FROM evaluations
       ORDER BY created_at DESC
-    `;
+    `);
 
     const rows = result.rows as any[];
 
@@ -43,21 +45,28 @@ export async function GET(req: NextRequest) {
     ];
 
     // Build CSV rows
-    const csvRows = rows.map((row) => [
-      row.id,
-      `"${(row.partner_name || "").replace(/"/g, '""')}"`, // Escape quotes in names
-      row.decision,
-      row.total_weighted_score,
-      row.max_possible_score,
-      row.normalized_score,
-      row.tier1_weight,
-      row.tier2_weight,
-      row.tier3_weight,
-      `"${(row.key_risks?.join("; ") || "").replace(/"/g, '""')}"`,
-      `"${(row.key_upsides?.join("; ") || "").replace(/"/g, '""')}"`,
-      new Date(row.created_at).toISOString(),
-      new Date(row.updated_at).toISOString(),
-    ]);
+    const csvRows = rows.map((row) => {
+      const tierWeights = row.tier_weights || { tier1: 3, tier2: 2, tier3: 1 };
+      const resultData = row.result_data || {};
+      const keyRisks = resultData.keyRisks || [];
+      const keyUpsides = resultData.keyUpsides || [];
+
+      return [
+        row.id,
+        `"${(row.partner_name || "").replace(/"/g, '""')}"`, // Escape quotes in names
+        row.decision,
+        row.total_score,
+        row.max_score,
+        row.normalized_score,
+        tierWeights.tier1,
+        tierWeights.tier2,
+        tierWeights.tier3,
+        `"${(keyRisks.join("; ") || "").replace(/"/g, '""')}"`,
+        `"${(keyUpsides.join("; ") || "").replace(/"/g, '""')}"`,
+        new Date(row.created_at).toISOString(),
+        new Date(row.updated_at).toISOString(),
+      ];
+    });
 
     // Combine header and rows
     const csv = [headers, ...csvRows].map((row) => row.join(",")).join("\n");
@@ -73,5 +82,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[v0] Failed to export CSV:", error);
     return NextResponse.json({ error: "Failed to export evaluations" }, { status: 500 });
+  } finally {
+    client.release();
   }
 }
