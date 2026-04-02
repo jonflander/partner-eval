@@ -1,5 +1,5 @@
 "use client";
-
+// Saved evaluations panel - displays list of saved partner evaluations
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ interface SavedEvaluation {
   id: string;
   partner_name: string;
   decision: string;
-  total_weighted_score: number;
+  total_score: number;
   normalized_score: number;
   created_at: string;
   updated_at: string;
@@ -145,7 +145,7 @@ export function SavedEvaluationsPanel({ onLoad, onNew, isLoading }: Props) {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      {evaluation.total_weighted_score.toFixed(1)} pts ({evaluation.normalized_score.toFixed(0)}%)
+                      {Number(evaluation.total_score).toFixed(1)} pts ({Number(evaluation.normalized_score).toFixed(0)}%)
                     </span>
                   </div>
                   <div className="flex gap-1.5 pt-1">

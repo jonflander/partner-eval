@@ -57,31 +57,15 @@ export default function Home() {
       if (!res.ok) throw new Error("Load failed");
       const data = await res.json();
       
-      // Reconstruct the evaluation result from stored data
-      const partnerInput: EvaluationInput = {
-        partnerName: data.partner_name,
-      };
-
-      // Rebuild criteria input from stored data
-      const storedCriteria = data.criteria_data;
-      storedCriteria.forEach((c: any) => {
-        partnerInput[c.key as keyof EvaluationInput] = {
-          score: c.score,
-          confidence: c.confidence,
-          validationNeeded: c.validationNeeded,
-          notes: c.notes,
-        };
-      });
-
-      // Recompute with stored weights
-      const weights: TierWeights = {
-        tier1: data.tier1_weight,
-        tier2: data.tier2_weight,
-        tier3: data.tier3_weight,
-      };
-
-      const evaluated = computeEvaluation(partnerInput, weights);
-      setResult(evaluated);
+      // The result_data contains the full EvaluationResult, restore it directly
+      const storedResult: EvaluationResult = data.result_data;
+      
+      // Ensure tierWeights is present (for backwards compatibility)
+      if (!storedResult.tierWeights && data.tier_weights) {
+        storedResult.tierWeights = data.tier_weights;
+      }
+      
+      setResult(storedResult);
       setSavedId(id);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -191,13 +175,6 @@ export default function Home() {
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     {isLoading ? "Saving..." : savedId ? "Update Evaluation" : "Save Evaluation"}
-                  </Button>
-                  <Button
-                    onClick={handleReset}
-                    variant="outline"
-                    className="border-border text-foreground hover:bg-secondary"
-                  >
-                    New Evaluation
                   </Button>
                 </div>
                 <ScoreReport result={result} onReset={handleReset} />
