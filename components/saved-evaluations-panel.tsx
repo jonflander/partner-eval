@@ -1,5 +1,5 @@
 "use client";
-// Saved evaluations panel - displays list of saved partner evaluations
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,7 @@ export function SavedEvaluationsPanel({ onLoad, onNew, isLoading }: Props) {
       const data = await res.json();
       setEvaluations(data);
     } catch (err) {
-      console.error("[v0] Failed to load saved evaluations:", err);
+      console.error("Failed to load saved evaluations:", err);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export function SavedEvaluationsPanel({ onLoad, onNew, isLoading }: Props) {
       if (!res.ok) throw new Error("Delete failed");
       setEvaluations((prev) => prev.filter((e) => e.id !== id));
     } catch (err) {
-      console.error("[v0] Failed to delete:", err);
+      console.error("Failed to delete:", err);
       alert("Failed to delete evaluation");
     }
   }
@@ -85,12 +85,22 @@ export function SavedEvaluationsPanel({ onLoad, onNew, isLoading }: Props) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("[v0] Failed to export CSV:", err);
+      console.error("Failed to export CSV:", err);
       alert("Failed to export evaluations");
     }
   }
 
   const cfg = (decision: string) => DECISION_CONFIG[decision] || DECISION_CONFIG.Pass;
+
+  // Helper to safely format numbers
+  const formatScore = (val: unknown) => {
+    const num = Number(val);
+    return isNaN(num) ? "0.0" : num.toFixed(1);
+  };
+  const formatPct = (val: unknown) => {
+    const num = Number(val);
+    return isNaN(num) ? "0" : num.toFixed(0);
+  };
 
   return (
     <div className="space-y-4">
@@ -123,42 +133,42 @@ export function SavedEvaluationsPanel({ onLoad, onNew, isLoading }: Props) {
             Saved Evaluations ({evaluations.length})
           </p>
           <div className="max-h-[60vh] overflow-y-auto space-y-1.5">
-            {evaluations.map((evaluation) => {
-              const c = cfg(evaluation.decision);
+            {evaluations.map((ev) => {
+              const c = cfg(ev.decision);
               return (
                 <div
-                  key={evaluation.id}
+                  key={ev.id}
                   className="rounded-lg border border-border bg-card p-3 space-y-2 hover:bg-secondary/50 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-foreground truncate">
-                        {evaluation.partner_name}
+                        {ev.partner_name}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(evaluation.created_at), "MMM d, yyyy")}
+                        {format(new Date(ev.created_at), "MMM d, yyyy")}
                       </p>
                     </div>
                     <Badge className={cn("shrink-0 text-xs font-semibold px-2 py-1", c.bg, c.text)}>
-                      {evaluation.decision}
+                      {ev.decision}
                     </Badge>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">
-                      {Number(evaluation.total_score).toFixed(1)} pts ({Number(evaluation.normalized_score).toFixed(0)}%)
+                      {formatScore(ev.total_score)} pts ({formatPct(ev.normalized_score)}%)
                     </span>
                   </div>
                   <div className="flex gap-1.5 pt-1">
                     <Button
-                      onClick={() => handleLoad(evaluation.id)}
-                      disabled={loadingId === evaluation.id || isLoading}
+                      onClick={() => handleLoad(ev.id)}
+                      disabled={loadingId === ev.id || isLoading}
                       size="sm"
                       className="flex-1 h-7 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
-                      {loadingId === evaluation.id ? "Loading..." : "Open"}
+                      {loadingId === ev.id ? "Loading..." : "Open"}
                     </Button>
                     <Button
-                      onClick={() => handleDelete(evaluation.id, evaluation.partner_name)}
+                      onClick={() => handleDelete(ev.id, ev.partner_name)}
                       disabled={isLoading}
                       size="sm"
                       variant="outline"
